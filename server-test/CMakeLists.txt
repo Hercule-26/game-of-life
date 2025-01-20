@@ -10,7 +10,10 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)  # Si vous utilisez des ressources Qt (non utilisé ici mais au cas où)
 
 # Ajout de l'exécutable du serveur
-add_executable(server-test main.cpp)
+add_executable(server-test main.cpp
+    server.h
+    server.cpp
+    model/model.cpp model/model.h model/table.h)
 
 # Trouver Qt6 avec les modules nécessaires (Core et Network)
 find_package(Qt6 REQUIRED Core Network)

@@ -1,47 +1,39 @@
 #include <QCoreApplication>
 #include <QTcpSocket>
-#include <QHostAddress>
 #include <QDebug>
-#include <iostream>
-#include <string.h>
 
-using namespace std;
-
-class Client : public QObject
-{
-public:
-    Client() {
-        socket = new QTcpSocket(this);
-
-        cout << "Attempting to connect to the server..." << endl;
-        socket->connectToHost(QHostAddress::LocalHost, 1234);
-
-        if (socket->waitForConnected(3000)) {  // Attente de la connexion (3 secondes)
-            cout << "Connected to server!" << endl;
-
-            socket->write("Hello from client!");
-            socket->flush();
-
-            connect(socket, &QTcpSocket::readyRead, this, &Client::onReadyRead);
-        } else {
-            cout << "Connection failed! Error:" << socket->errorString().toStdString() << endl;
-        }
-    }
-
-    void onReadyRead() {
-        QByteArray data = socket->readAll();
-        cout << "Received from server: " << data.toStdString()  << endl;
-    }
-
-private:
-    QTcpSocket *socket;
-};
+QTcpSocket *socket;
 
 int main(int argc, char *argv[])
 {
     QCoreApplication a(argc, argv);
 
-    Client client;
+    socket = new QTcpSocket();
+    qDebug() << "Attempting to connect to the server...";
+
+    socket->connectToHost("127.0.0.1", 1234);  // Adresse et port du serveur
+
+    if (!socket->waitForConnected()) {
+        qDebug() << "Connection failed!";
+        return 1;  // Exit if the connection fails
+    } else {
+        qDebug() << "Connected to the server!";
+    }
+
+    // Envoi de la requête "get 0 1"
+    socket->write("get 0 1");
+    socket->flush();
+    qDebug() << "Request sent: get 0 1";
+
+    // Attente de la réponse du serveur
+    if (socket->waitForReadyRead(5000)) {  // Attendre 5 secondes maximum pour la réponse
+        QByteArray response = socket->readAll();
+        qDebug() << "Server response: " << response;
+    } else {
+        qDebug() << "No response from server within the timeout.";
+    }
+
+    socket->close();
 
     return a.exec();
 }

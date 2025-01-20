@@ -6,7 +6,9 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Ajout de l'exécutable du client
-add_executable(client-test main.cpp)
+add_executable(client-test main.cpp
+    client.h
+    client.cpp)
 
 # Trouver Qt5 avec les modules nécessaires (Core et Network)
 find_package(Qt6 REQUIRED Core Network)
