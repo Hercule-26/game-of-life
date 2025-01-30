@@ -4,7 +4,6 @@
 
 int main(int argc, char *argv[]) {
     QCoreApplication a(argc, argv);
-    QLoggingCategory::setFilterRules(QStringLiteral("qt.networking* = true"));
 
     Client client;
     client.connectToServer();

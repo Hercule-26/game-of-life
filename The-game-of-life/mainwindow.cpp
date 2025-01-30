@@ -1,65 +1,154 @@
 #include "mainwindow.h"
-#include <QGraphicsView>
-#include <QGraphicsScene>
-#include <QGraphicsRectItem>
-#include <QVBoxLayout>
-#include <QKeyEvent>
+#include <QWidget>
+#include <QDebug>
+#include <QLineEdit>
+#include <QLabel>
+#include <QIntValidator> // Ajouter cet include pour QIntValidator
+#include "local/mainwindow_local.h"
+#include "online/mainwindow_online.h"
+#include "online/network/client.h"
 
-MainWindow::MainWindow(int rows, int cols, QWidget *parent)
-    : QMainWindow(parent), model(rows, cols)
+MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
 {
-    widget = new TableWidget(parent, 10, &model);
-    setCentralWidget(widget);
+    QWidget *centralWidget = new QWidget(this);
+    setCentralWidget(centralWidget);
 
-    timer = new QTimer(this);
-    connect(timer, &QTimer::timeout, this, &MainWindow::update_game);
+    radioLocal = new QRadioButton("Play in local", this);
+    radioOnline = new QRadioButton("Play online", this);
 
-    connect(&model, &Model::tableUpdated, widget, &TableWidget::refreshGrid);
+    startButton = new QPushButton("Start game", this);
 
-    resize(600, 600);
+    // Initialisation des composants communs
+    setupCommonComponents();
+
+    // Initialisation du mode local
+    setupLocalMode();
+
+    // Initialisation du mode en ligne
+    setupOnlineMode();
+
+    connect(startButton, &QPushButton::clicked, this, &MainWindow::launchGame);
+    connect(radioLocal, &QRadioButton::toggled, this, &MainWindow::toggleLocalInputs);
+    connect(radioOnline, &QRadioButton::toggled, this, &MainWindow::toggleOnlineInputs);
+
+    layout = new QVBoxLayout;
+    layout->addWidget(radioLocal);
+    layout->addWidget(radioOnline);
+    layout->addWidget(ipLabel);
+    layout->addWidget(ipInput);
+    layout->addWidget(portLabel);
+    layout->addWidget(portInput);
+    layout->addWidget(widthLabel);
+    layout->addWidget(widthInput);
+    layout->addWidget(heightLabel);
+    layout->addWidget(heightInput);
+    layout->addWidget(startButton);
+
+    centralWidget->setLayout(layout);
+
+    resize(300, 250);
 }
 
 MainWindow::~MainWindow()
 {
-    delete timer;
 }
 
-void MainWindow::toggle_game() {
-    if (running) {
-        timer->stop();
-        running = false;
-    } else {
-        timer->start(0);
-        running = true;
-    }
+void MainWindow::setupCommonComponents()
+{
+    ipLabel = new QLabel("IP Address:", this);
+    ipInput = new QLineEdit(this);
+    ipInput->setPlaceholderText("127.0.0.1");
+    ipInput->setText("127.0.0.1");
+
+    portLabel = new QLabel("Port:", this);
+    portInput = new QLineEdit(this);
+    portInput->setPlaceholderText("1234");
+    portInput->setText("1234");
+
+    widthLabel = new QLabel("Width:", this);
+    widthInput = new QLineEdit(this);
+    widthInput->setText("100");
+
+    heightLabel = new QLabel("Height:", this);
+    heightInput = new QLineEdit(this);
+    heightInput->setText("100");
+
+    QIntValidator *intValidator = new QIntValidator(1, 9999, this);
+    portInput->setValidator(intValidator);
+    widthInput->setValidator(intValidator);
+    heightInput->setValidator(intValidator);
 }
 
-void MainWindow::update_game() {
-    model.run_life();
-    update();
+void MainWindow::setupLocalMode()
+{
+    widthLabel->setVisible(false);
+    widthInput->setVisible(false);
+    heightLabel->setVisible(false);
+    heightInput->setVisible(false);
 }
 
-void MainWindow::draw_table() {
-    QPainter painter(this);
-    int cellSize = 10;
+void MainWindow::setupOnlineMode()
+{
+    ipLabel->setVisible(false);
+    ipInput->setVisible(false);
+    portLabel->setVisible(false);
+    portInput->setVisible(false);
+}
 
-    for (int i = 0; i < model.get_table_rows(); ++i) {
-        for (int j = 0; j < model.get_table_cols(); ++j) {
-            QRect cellRect(j * cellSize, i * cellSize, cellSize, cellSize);
-            if (model.get_at(i, j) == 1) {
-                painter.fillRect(cellRect, Qt::black);
-            } else {
-                painter.fillRect(cellRect, Qt::white);
-            }
-            painter.drawRect(cellRect);
+void MainWindow::launchGame()
+{
+    if (radioLocal->isChecked()) {
+        qDebug() << "Starting in local mode..";
+        QString widthText = widthInput->text();
+        QString heightText = heightInput->text();
+
+        if(widthText == "" || heightText == "") {
+            qDebug() << "One or more input are not entered";
+        } else {
+            int width = widthText.toInt();
+            int height = heightText.toInt();
+
+            static MainWindowLocal w(width, height);
+            w.show();
+            this->close();
         }
+    } else if (radioOnline->isChecked()) {
+        qDebug() << "Starting in online mode...";
+        QString ipText = ipInput->text();
+        QString portText = portInput->text();
+
+        if(ipText == "" || portText == "") {
+            qDebug() << "One or more input are not entered";
+        } else {
+            Client client;
+            int port = portText.toInt();
+            client.connectToServer(ipText, port);
+            if(client.isConnected()) {
+                qDebug() << "You are connected to the server";
+            } else {
+                qDebug() << "You are not connected to the server";
+            }
+            static MainWindowOnline w;
+            w.show();
+            this->close();
+        }
+    } else {
+        qDebug() << "Please select a game mode";
     }
 }
 
-void MainWindow::keyPressEvent(QKeyEvent *event) {
-    if (event->key() == Qt::Key_Space) {
-        toggle_game();
-        qDebug() << "Touche Espace enfoncée !";
-    }
+void MainWindow::toggleOnlineInputs(bool checked)
+{
+    ipLabel->setVisible(checked);
+    ipInput->setVisible(checked);
+    portLabel->setVisible(checked);
+    portInput->setVisible(checked);
 }
 
+void MainWindow::toggleLocalInputs(bool checked)
+{
+    widthLabel->setVisible(checked);
+    widthInput->setVisible(checked);
+    heightLabel->setVisible(checked);
+    heightInput->setVisible(checked);
+}

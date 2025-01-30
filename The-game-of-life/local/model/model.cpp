@@ -24,7 +24,7 @@ bool Model::get_at(int row, int col) {
 }
 
 void Model::run_life() {
-    qDebug() << "run life en cours d'execution";
+    //qDebug() << "run life en cours d'execution";
     Table tmp_table(table.rows(), table.cols());
 
     for (int i = 0; i < table.rows(); ++i) {
@@ -49,7 +49,7 @@ void Model::run_life() {
     table = tmp_table;
 
     emit tableUpdated();
-    qDebug() << "run life à fini d'etre executer";
+    //qDebug() << "run life à fini d'etre executer";
 }
 
 int Model::count_alive_neighbors(int row, int col) {

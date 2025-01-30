@@ -15,10 +15,11 @@ Client::Client(QObject *parent) : QObject(parent) {
     connect(socket, &QTcpSocket::errorOccurred, this, [](QAbstractSocket::SocketError socketError) {
         cout << "Erreur with socket : " << socketError << endl;
     });
+
 }
 
-void Client::connectToServer() {
-    socket->connectToHost("127.0.0.1", 1234);
+void Client::connectToServer(QString ip, int port) {
+    socket->connectToHost(ip, port);
 
     if (socket->waitForConnected(3000)) {
         cout << "Connected to server!" << endl;
@@ -65,3 +66,10 @@ void Client::onReadyRead() {
     }
 }
 
+const QTcpSocket* Client::getSocket() const {
+    return socket;
+}
+
+bool Client::isConnected() {
+    return socket->state() == QAbstractSocket::ConnectedState;
+}

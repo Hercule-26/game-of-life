@@ -26,7 +26,7 @@ void TableWidget::createGrid() {
                     rect->setBrush(Qt::white);
                     model->set(row, col, false);
                 }
-                qDebug() << model->get_at(row, col);
+                //qDebug() << model->get_at(row, col);
             });
             scene->addItem(rect);
         }
