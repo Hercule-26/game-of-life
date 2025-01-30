@@ -1,76 +1,100 @@
 #include "server.h"
-#include <sstream>
-#include <string>
+#include <iostream>
+#include <QJsonArray>
 
 using namespace std;
-Server::Server(Model& model) : model(model) {
+
+Server::Server(Model& model, QObject *parent) : model(model), QObject(parent) {
     server = new QTcpServer(this);
-
-    connect(server, &QTcpServer::newConnection, this, &Server::onNewConnection);
-
-    if (!server->listen(QHostAddress::Any, 1234)) {
-        qDebug() << "Server could not start!";
+    int port = 1234;
+    if (server->listen(QHostAddress::Any, port)) {
+        cout << "Server started on port " << port << "..." << endl;
+        connect(server, &QTcpServer::newConnection, this, &Server::onNewConnection);
     } else {
-        qDebug() << "Server started on port 1234";
+        cout << "Server failed to start!";
     }
 }
 
 void Server::onNewConnection() {
     QTcpSocket *clientSocket = server->nextPendingConnection();
+    cout << "New client connected:" << clientSocket->peerAddress().toString().toStdString() << endl;
+
     connect(clientSocket, &QTcpSocket::readyRead, this, &Server::onReadyRead);
-    qDebug() << "New client connected!";
 }
 
 void Server::onReadyRead() {
     QTcpSocket *clientSocket = qobject_cast<QTcpSocket *>(sender());
-    QByteArray data = clientSocket->readAll();
-    qDebug() << "Received data: " << data;
+    if (clientSocket) {
+        QByteArray requestData = clientSocket->readAll();
+        QJsonDocument jsonDoc = QJsonDocument::fromJson(requestData);
 
-    vector<string> splited_command = split(data.toStdString(), ' ');
-    string first = splited_command.at(0);
-    if(first.compare("set")) {
-        if(splited_command.size() != 4) {
-            clientSocket->write("Arguments invalid !");
-        }
-        try {
-            int x = stoi(splited_command.at(1));
-            int y = stoi(splited_command.at(2));
-            bool value = stoi(splited_command.at(3));
-            model.set(x, y, value);
-        } catch (...) {
-            clientSocket->write("Error while parsing !");
-        }
-    } else if (first.compare("get")) {
-        if(splited_command.size() != 3) {
-            clientSocket->write("Arguments invalid !");
-        }
-        try {
-            int x = stoi(splited_command.at(1));
-            int y = stoi(splited_command.at(2));
-            int value = model.get_at(x, y);
-            string result = "get " + to_string(value);
+        if (!jsonDoc.isNull()) {
+            QJsonObject jsonObj = jsonDoc.object();
+            QByteArray jsonResponse = QJsonDocument(jsonObj).toJson(QJsonDocument::Indented);
 
-            clientSocket->write(QByteArray::fromStdString(result));
-        } catch (...) {
-            clientSocket->write("Error while parsing !");
+            cout << "Parsed JSON: " << jsonResponse.constData() << endl;
+            map<string, ValueType> map;
+            map["status"] = 200;
+            map["table"] = model.getTable();
+            QJsonObject response = getJsonObject(map);
+            sendResponse(clientSocket, response);
+        } else {
+            cout << "Invalid JSON format!"  << endl;
         }
     }
 }
 
-void Server::sendData(QTcpSocket *clientSocket, bool response) {
-    clientSocket->write("Hello from server!");
-}
-
-vector<string> Server::split(const string& str, char delimiter) {
-    vector<string> result;
-    string token;
-    stringstream ss(str);
-
-    while (getline(ss, token, delimiter)) {
-        result.push_back(token);
+QJsonObject Server::getJsonObject(map<string, ValueType>& map) {
+    QJsonObject responseObj;
+    for (const auto& pair : map) {
+        responseObj[QString::fromStdString(pair.first)] = variantToJsonValue(pair.second);
     }
+    return responseObj;
+}
 
-    return result;
+QJsonValue Server::variantToJsonValue(const ValueType& value) {
+    if (holds_alternative<int>(value)) {
+        return QJsonValue(get<int>(value));
+    } else if (holds_alternative<QString>(value)) {
+        return QJsonValue(get<QString>(value));
+    } else if (holds_alternative<RequestType>(value)) {
+        RequestType requestType = get<RequestType>(value);
+        switch (requestType) {
+        case RequestType::SET:
+            return QJsonValue("SET");
+        case RequestType::GET:
+            return QJsonValue("GET");
+        default:
+            return QJsonValue();
+        }
+    } else if (holds_alternative<reference_wrapper<const vector<vector<bool>>>>(value)) {
+        const auto& table = get<reference_wrapper<const vector<vector<bool>>>>(value).get();
+        QJsonArray tableArray;
+        for (const auto& row : table) {
+            QJsonArray rowArray;
+            for (bool cell : row) {
+                rowArray.append(QJsonValue(cell));
+            }
+            tableArray.append(rowArray);
+        }
+        return tableArray;
+    }
+    //cout << "Nothing found" << endl;
+    return QJsonValue();
 }
 
 
+void Server::sendResponse(QTcpSocket *clientSocket, QJsonObject& responseObj) {
+    QJsonDocument responseDoc(responseObj);
+    QByteArray responseData = responseDoc.toJson();
+
+    //QByteArray jsonResponse = responseDoc.toJson(QJsonDocument::Indented);
+    //cout << "Sending JSON: " << jsonResponse.constData() << endl;
+
+    if (clientSocket->state() == QAbstractSocket::ConnectedState) {
+        clientSocket->write(responseData);
+        clientSocket->flush();
+    } else {
+        cout << "Socket is not connected!" << endl;
+    }
+}

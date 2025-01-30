@@ -4,16 +4,14 @@ project(server-test LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-# Activer AUTOMOC et AUTOMOC pour Qt6
 set(CMAKE_AUTOMOC ON)
-set(CMAKE_AUTORCC ON)  # Si vous utilisez des ressources Qt (non utilisé ici mais au cas où)
 
 # Ajout de l'exécutable du serveur
 add_executable(server-test main.cpp
     server.h
     server.cpp
-    model/model.cpp model/model.h model/table.h)
+    model/model.cpp model/model.h model/table.h
+    model/requestType.h)
 
 # Trouver Qt6 avec les modules nécessaires (Core et Network)
 find_package(Qt6 REQUIRED Core Network)

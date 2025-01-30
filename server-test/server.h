@@ -1,25 +1,32 @@
 #ifndef SERVER_H
 #define SERVER_H
+
+#include <QObject>
 #include <QTcpServer>
 #include <QTcpSocket>
-#include <QDebug>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <string>
 #include "model/model.h"
+#include "model/requestType.h"
+using ValueType = std::variant<RequestType, int, QString, std::reference_wrapper<const std::vector<std::vector<bool>>>>;
 
-class Server : public QObject
-{
+class Server : public QObject {
+    Q_OBJECT
+
 public:
-    Server(Model& model);
+    explicit Server(Model& model, QObject *parent = nullptr);
 
+private slots:
     void onNewConnection();
     void onReadyRead();
-
-    void sendData(QTcpSocket *clientSocket, bool response);
-    void setData();
-    std::vector<std::string> split(const std::string& str, char delimiter);
+    void sendResponse(QTcpSocket *clientSocket, QJsonObject& responseObj);
+    QJsonObject getJsonObject(std::map<std::string, ValueType>& map);
+    QJsonValue variantToJsonValue(const ValueType& value);
 
 private:
     QTcpServer *server;
-    Model& model;
+    Model model;
 };
 
 #endif // SERVER_H

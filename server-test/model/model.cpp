@@ -11,9 +11,10 @@ int Model::get_table_cols() {
     return table.cols();
 }
 
-void Model::reset() {
-    table.reset();
+const std::vector<std::vector<bool>>& Model::getTable() const {
+    return table.getTable();
 }
+
 
 void Model::set(int row, int col, bool value) {
     table.set(row, col, value);

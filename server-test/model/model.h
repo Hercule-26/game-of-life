@@ -12,7 +12,7 @@ public:
     int get_table_rows();
     int get_table_cols();
     bool get_at(int row, int col);
-    void reset();
+    const std::vector<std::vector<bool>>& getTable() const;
     void set(int row, int col, bool value);
 
     void run_life();
